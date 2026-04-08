@@ -47,7 +47,13 @@ Use it for:
 - A codebase you're new to (understand architecture before touching anything)
 - A reading list (papers + tweets + notes → one navigable graph)
 - A research corpus (citation graph + concept graph in one)
+- A same-story media corpus (reporting + editorials + speeches + screenshots)
+- A discourse map (actors, claims, stances, topics, events, perspectives)
 - Your personal /raw folder (drop everything in, let it grow, query it)
+
+For social science / politics / opinion / press corpora, prefer the **balanced hybrid** profile:
+- `story`, `document`, `actor`, `claim`, `topic`, `event`, `stance`, `perspective`, `quote`, `span`
+- Keep stance primary, sentiment secondary, and preserve provenance with quote/span nodes.
 
 ## What You Must Do When Invoked
 
@@ -185,15 +191,21 @@ Process each file one at a time. For each file:
    - AMBIGUOUS: uncertain — flag it, do not omit
    - Code files: semantic edges AST cannot find. Do not re-extract imports.
    - Doc/paper files: named concepts, entities, citations, and rationale nodes (WHY decisions were made → `rationale_for` edges)
+     For news / opinion / political corpora, switch to a light balanced-hybrid discourse graph:
+     `story`, `document`, `actor`, `claim`, `topic`, `event`, `stance`, `perspective`, `quote`, `span`
+     Extract theses/perspectives, quotes, claim-supporting spans, and actor→claim→topic/event links when the source supports them.
+     Keep sentiment secondary as metadata on span/quote/stance nodes when useful.
+     Use quote/span nodes to preserve provenance so reporter voice, quoted voice, and inference stay separable.
    - Image files: use vision — understand what the image IS, not just OCR
    - DEEP_MODE (if --mode deep): be aggressive with INFERRED edges
    - Semantic similarity: if two concepts solve the same problem without a structural link, add `semantically_similar_to` INFERRED edge (confidence 0.6-0.95). Non-obvious cross-file links only.
    - Hyperedges: if 3+ nodes share a concept/flow not captured by pairwise edges, add a hyperedge. Max 3 per file.
+   - If YAML frontmatter is present, preserve `source_url`, `captured_at`, `author`, `contributor`, `outlet`, `genre`, `story_id`, and `published_at`
    - confidence_score REQUIRED on every edge: EXTRACTED=1.0, INFERRED=0.6-0.9 (reason individually), AMBIGUOUS=0.1-0.3
 3. Accumulate results across all files
 
 Schema for each file's output:
-{"nodes":[{"id":"filestem_entityname","label":"Human Readable Name","file_type":"code|document|paper|image","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+{"nodes":[{"id":"filestem_entityname","label":"Human Readable Name","file_type":"code|document|paper|image","node_type":null,"source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null,"outlet":null,"genre":null,"story_id":null,"published_at":null,"sentiment":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for|document_in_story|document_mentions_topic|document_describes_event|document_has_perspective|quote_in_document|quote_by_actor|quote_expresses_claim|span_supports_claim|actor_makes_claim|claim_about_topic|claim_about_event|actor_takes_stance|stance_toward_claim|stance_toward_actor|perspective_groups_claim|claim_supports_claim|claim_conflicts_with_claim|event_precedes_event","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
 
 After processing all files, write the accumulated result to `.graphify_semantic_new.json`.
 
@@ -607,7 +619,7 @@ Graph complete. Outputs in PATH_TO_DIR/graphify-out/
 Replace PATH_TO_DIR with the actual absolute path of the directory that was processed.
 
 Then paste these sections from GRAPH_REPORT.md directly into the chat:
-- God Nodes
+- Central Nodes
 - Surprising Connections
 - Suggested Questions
 

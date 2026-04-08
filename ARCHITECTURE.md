@@ -1,6 +1,6 @@
 # Architecture
 
-graphify is a Claude Code skill backed by a Python library. The skill orchestrates the library; the library can be used standalone.
+graphify is an AI assistant skill backed by a Python library. The skill orchestrates the library; the library can be used standalone.
 
 ## Pipeline
 
@@ -10,6 +10,15 @@ detect()  →  extract()  →  build_graph()  →  cluster()  →  analyze()  �
 
 Each stage is a single function in its own module. They communicate through plain Python dicts and NetworkX graphs - no shared state, no side effects outside `graphify-out/`.
 
+## Domain profiles
+
+graphify keeps the engine general and the ontology light.
+
+- **Code profile**: file, class, function, import, call, rationale
+- **Balanced hybrid discourse profile**: `story`, `document`, `actor`, `claim`, `topic`, `event`, `stance`, `perspective`, `quote`, `span`
+
+The balanced hybrid profile is intended for mixed social science / politics / opinion / press corpora. It keeps stance primary, sentiment secondary, and uses quote/span nodes for provenance.
+
 ## Module responsibilities
 
 | Module | Function | Input → Output |
@@ -18,7 +27,7 @@ Each stage is a single function in its own module. They communicate through plai
 | `extract.py` | `extract(path)` | file path → `{nodes, edges}` dict |
 | `build.py` | `build_graph(extractions)` | list of extraction dicts → `nx.Graph` |
 | `cluster.py` | `cluster(G)` | graph → graph with `community` attr on each node |
-| `analyze.py` | `analyze(G)` | graph → analysis dict (god nodes, surprises, questions) |
+| `analyze.py` | `analyze(G)` | graph → analysis dict (central nodes, surprises, questions) |
 | `report.py` | `render_report(G, analysis)` | graph + analysis → GRAPH_REPORT.md string |
 | `export.py` | `export(G, out_dir, ...)` | graph → Obsidian vault, graph.json, graph.html, graph.svg |
 | `ingest.py` | `ingest(url, ...)` | URL → file saved to corpus dir |
@@ -36,7 +45,7 @@ Every extractor returns:
 ```json
 {
   "nodes": [
-    {"id": "unique_string", "label": "human name", "source_file": "path", "source_location": "L42"}
+    {"id": "unique_string", "label": "human name", "file_type": "code|document|paper|image", "source_file": "path", "source_location": "L42", "node_type": "optional semantic type such as actor|claim|topic|event"}
   ],
   "edges": [
     {"source": "id_a", "target": "id_b", "relation": "calls|imports|uses|...", "confidence": "EXTRACTED|INFERRED|AMBIGUOUS"}
@@ -45,6 +54,8 @@ Every extractor returns:
 ```
 
 `validate.py` enforces this schema before `build_graph()` consumes it.
+
+For discourse corpora, keep `file_type` as the source modality and store the semantic taxonomy in `node_type`. This keeps one graph format working across code and news/opinion sources.
 
 ## Confidence labels
 

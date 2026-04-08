@@ -2,6 +2,7 @@
 from __future__ import annotations
 from datetime import date
 import networkx as nx
+from .profiles import is_balanced_hybrid_graph, node_kind
 
 
 def generate(
@@ -17,6 +18,24 @@ def generate(
     suggested_questions: list[dict] | None = None,
 ) -> str:
     today = date.today().isoformat()
+    balanced_hybrid = is_balanced_hybrid_graph(G)
+
+    central_heading = (
+        "## Central Nodes (actors, claims, topics, events)"
+        if balanced_hybrid
+        else "## God Nodes (most connected - your core abstractions)"
+    )
+    surprise_heading = (
+        "## Cross-Perspective Bridges"
+        if balanced_hybrid
+        else "## Surprising Connections (you probably didn't know these)"
+    )
+    communities_heading = (
+        "## Story & Perspective Clusters"
+        if balanced_hybrid
+        else "## Communities"
+    )
+    gaps_heading = "## Coverage Gaps" if balanced_hybrid else "## Knowledge Gaps"
 
     confidences = [d.get("confidence", "EXTRACTED") for _, _, d in G.edges(data=True)]
     total = len(confidences) or 1
@@ -49,12 +68,17 @@ def generate(
         + (f" · INFERRED: {len(inf_edges)} edges (avg confidence: {inf_avg})" if inf_avg is not None else ""),
         f"- Token cost: {token_cost.get('input', 0):,} input · {token_cost.get('output', 0):,} output",
         "",
-        "## God Nodes (most connected - your core abstractions)",
+        central_heading,
     ]
     for i, node in enumerate(god_node_list, 1):
-        lines.append(f"{i}. `{node['label']}` - {node['edges']} edges")
+        if balanced_hybrid and node["id"] in G:
+            kind = node_kind(G.nodes[node["id"]])
+            kind_tag = f" ({kind})" if kind else ""
+        else:
+            kind_tag = ""
+        lines.append(f"{i}. `{node['label']}`{kind_tag} - {node['edges']} edges")
 
-    lines += ["", "## Surprising Connections (you probably didn't know these)"]
+    lines += ["", surprise_heading]
     if surprise_list:
         for s in surprise_list:
             relation = s.get("relation", "related_to")
@@ -84,7 +108,7 @@ def generate(
             conf_tag = f"{conf} {cscore:.2f}" if cscore is not None else conf
             lines.append(f"- **{h.get('label', h.get('id', ''))}** — {node_labels} [{conf_tag}]")
 
-    lines += ["", "## Communities"]
+    lines += ["", communities_heading]
     from .analyze import _is_file_node as _ifn
     for cid, nodes in communities.items():
         label = community_labels.get(cid, f"Community {cid}")
@@ -124,18 +148,24 @@ def generate(
     gap_count = len(isolated) + len(thin_communities)
 
     if gap_count > 0 or amb_pct > 20:
-        lines += ["", "## Knowledge Gaps"]
+        lines += ["", gaps_heading]
         if isolated:
             isolated_labels = [G.nodes[n].get("label", n) for n in isolated[:5]]
             suffix = f" (+{len(isolated)-5} more)" if len(isolated) > 5 else ""
             lines.append(f"- **{len(isolated)} isolated node(s):** {', '.join(f'`{l}`' for l in isolated_labels)}{suffix}")
-            lines.append("  These have ≤1 connection - possible missing edges or undocumented components.")
+            if balanced_hybrid:
+                lines.append("  These have ≤1 connection - possible missing story links, quote attribution, or unresolved claims.")
+            else:
+                lines.append("  These have ≤1 connection - possible missing edges or undocumented components.")
         if thin_communities:
             for cid, nodes in thin_communities.items():
                 label = community_labels.get(cid, f"Community {cid}")
                 node_labels = [G.nodes[n].get("label", n) for n in nodes]
                 lines.append(f"- **Thin community `{label}`** ({len(nodes)} nodes): {', '.join(f'`{l}`' for l in node_labels)}")
-                lines.append("  Too small to be a meaningful cluster - may be noise or needs more connections extracted.")
+                if balanced_hybrid:
+                    lines.append("  Too small to be a meaningful cluster - may need stronger story, topic, or perspective links.")
+                else:
+                    lines.append("  Too small to be a meaningful cluster - may be noise or needs more connections extracted.")
         if amb_pct > 20:
             lines.append(f"- **High ambiguity: {amb_pct}% of edges are AMBIGUOUS.** Review the Ambiguous Edges section above.")
 
@@ -145,7 +175,10 @@ def generate(
         if no_signal:
             lines.append(f"_{suggested_questions[0]['why']}_")
         else:
-            lines.append("_Questions this graph is uniquely positioned to answer:_")
+            if balanced_hybrid:
+                lines.append("_Questions this graph is uniquely positioned to answer across stories, perspectives, and actors:_")
+            else:
+                lines.append("_Questions this graph is uniquely positioned to answer:_")
             lines.append("")
             for q in suggested_questions:
                 if q.get("question"):

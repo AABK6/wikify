@@ -1,4 +1,4 @@
-"""Graph analysis: god nodes (most connected), surprising connections (cross-community), suggested questions."""
+"""Graph analysis: central nodes, surprising connections, and suggested questions."""
 from __future__ import annotations
 import networkx as nx
 
@@ -37,10 +37,10 @@ def _is_file_node(G: nx.Graph, node_id: str) -> bool:
 
 
 def god_nodes(G: nx.Graph, top_n: int = 10) -> list[dict]:
-    """Return the top_n most-connected real entities - the core abstractions.
+    """Return the top_n most-connected real entities.
 
     File-level hub nodes are excluded: they accumulate import/contains edges
-    mechanically and don't represent meaningful architectural abstractions.
+    mechanically and don't represent meaningful architectural or discourse entities.
     """
     degree = dict(G.degree())
     sorted_nodes = sorted(degree.items(), key=lambda x: x[1], reverse=True)

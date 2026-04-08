@@ -61,6 +61,7 @@ def test_index_lists_god_nodes(tmp_path):
     G = _make_graph()
     to_wiki(G, COMMUNITIES, tmp_path, community_labels=LABELS, god_nodes_data=GOD_NODES)
     index = (tmp_path / "index.md").read_text()
+    assert "## Central Nodes" in index
     assert "[[parse]]" in index
     assert "2 connections" in index
 

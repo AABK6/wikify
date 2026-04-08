@@ -31,7 +31,7 @@ _SETTINGS_HOOK = {
             "command": (
                 "[ -f graphify-out/graph.json ] && "
                 "echo 'graphify: Knowledge graph exists. Read graphify-out/GRAPH_REPORT.md "
-                "for god nodes and community structure before searching raw files.' || true"
+                "for central nodes and community structure before searching raw files.' || true"
             ),
         }
     ],
@@ -128,7 +128,7 @@ _CLAUDE_MD_SECTION = """\
 This project has a graphify knowledge graph at graphify-out/.
 
 Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- Before answering architecture, corpus, or discourse questions, read graphify-out/GRAPH_REPORT.md for central nodes, bridges, and community structure
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
 """
@@ -143,7 +143,7 @@ _AGENTS_MD_SECTION = """\
 This project has a graphify knowledge graph at graphify-out/.
 
 Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- Before answering architecture, corpus, or discourse questions, read graphify-out/GRAPH_REPORT.md for central nodes, bridges, and community structure
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
 """
@@ -168,7 +168,7 @@ def _agents_install(project_dir: Path, platform: str) -> None:
     print(f"graphify section written to {target.resolve()}")
     print()
     print(f"{platform.capitalize()} will now check the knowledge graph before answering")
-    print("codebase questions and rebuild it after code changes.")
+    print("codebase, corpus, or discourse questions and rebuild it after code changes.")
     print()
     print("Note: unlike Claude Code, there is no PreToolUse hook equivalent for")
     print(f"{platform.capitalize()} — the AGENTS.md rules are the always-on mechanism.")
@@ -222,7 +222,7 @@ def claude_install(project_dir: Path | None = None) -> None:
 
     print()
     print("Claude Code will now check the knowledge graph before answering")
-    print("codebase questions and rebuild it after code changes.")
+    print("codebase, corpus, or discourse questions and rebuild it after code changes.")
 
 
 def _install_claude_hook(project_dir: Path) -> None:

@@ -6,6 +6,7 @@ from pathlib import Path
 import networkx as nx
 from networkx.readwrite import json_graph
 from graphify.security import validate_graph_path, sanitize_label
+from graphify.profiles import is_balanced_hybrid_graph, node_kind
 
 
 def _load_graph(graph_path: str) -> nx.Graph:
@@ -36,7 +37,14 @@ def _score_nodes(G: nx.Graph, terms: list[str]) -> list[tuple[float, str]]:
     for nid, data in G.nodes(data=True):
         label = data.get("label", "").lower()
         source = data.get("source_file", "").lower()
-        score = sum(1 for t in terms if t in label) + sum(0.5 for t in terms if t in source)
+        metadata_blob = " ".join(str(data.get(field, "")).lower() for field in (
+            "node_type", "outlet", "genre", "story_id", "published_at", "author", "source_url"
+        ))
+        score = (
+            sum(1 for t in terms if t in label)
+            + sum(0.75 for t in terms if t in metadata_blob)
+            + sum(0.5 for t in terms if t in source)
+        )
         if score > 0:
             scored.append((score, nid))
     return sorted(scored, reverse=True)
@@ -80,7 +88,14 @@ def _subgraph_to_text(G: nx.Graph, nodes: set[str], edges: list[tuple], token_bu
     lines = []
     for nid in sorted(nodes, key=lambda n: G.degree(n), reverse=True):
         d = G.nodes[nid]
-        line = f"NODE {sanitize_label(d.get('label', nid))} [src={d.get('source_file', '')} loc={d.get('source_location', '')} community={d.get('community', '')}]"
+        kind = node_kind(d)
+        attrs = []
+        if kind:
+            attrs.append(f"type={kind}")
+        attrs.append(f"src={d.get('source_file', '')}")
+        attrs.append(f"loc={d.get('source_location', '')}")
+        attrs.append(f"community={d.get('community', '')}")
+        line = f"NODE {sanitize_label(d.get('label', nid))} [{' '.join(attrs)}]"
         lines.append(line)
     for u, v in edges:
         if u in nodes and v in nodes:
@@ -164,7 +179,7 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
             ),
             types.Tool(
                 name="god_nodes",
-                description="Return the most connected nodes - the core abstractions of the knowledge graph.",
+                description="Return the most connected nodes - the central entities of the knowledge graph.",
                 inputSchema={"type": "object", "properties": {"top_n": {"type": "integer", "default": 10}}},
             ),
             types.Tool(
@@ -208,14 +223,27 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
         if not matches:
             return f"No node matching '{label}' found."
         nid, d = matches[0]
-        return "\n".join([
+        lines = [
             f"Node: {d.get('label', nid)}",
             f"  ID: {nid}",
             f"  Source: {d.get('source_file', '')} {d.get('source_location', '')}",
             f"  Type: {d.get('file_type', '')}",
+            f"  Node type: {d.get('node_type', '')}",
             f"  Community: {d.get('community', '')}",
             f"  Degree: {G.degree(nid)}",
-        ])
+        ]
+        for field, label in (
+            ("outlet", "Outlet"),
+            ("genre", "Genre"),
+            ("story_id", "Story"),
+            ("published_at", "Published"),
+            ("author", "Author"),
+            ("source_url", "URL"),
+        ):
+            value = d.get(field)
+            if value not in (None, ""):
+                lines.append(f"  {label}: {value}")
+        return "\n".join(lines)
 
     def _tool_get_neighbors(arguments: dict) -> str:
         label = arguments["label"].lower()
@@ -247,8 +275,12 @@ def serve(graph_path: str = "graphify-out/graph.json") -> None:
     def _tool_god_nodes(arguments: dict) -> str:
         from .analyze import god_nodes as _god_nodes
         nodes = _god_nodes(G, top_n=int(arguments.get("top_n", 10)))
-        lines = ["God nodes (most connected):"]
-        lines += [f"  {i}. {n['label']} - {n['edges']} edges" for i, n in enumerate(nodes, 1)]
+        title = "Central nodes:" if is_balanced_hybrid_graph(G) else "God nodes (most connected):"
+        lines = [title]
+        for i, n in enumerate(nodes, 1):
+            kind = node_kind(G.nodes[n["id"]]) if n["id"] in G else ""
+            kind_tag = f" ({kind})" if kind else ""
+            lines.append(f"  {i}. {n['label']}{kind_tag} - {n['edges']} edges")
         return "\n".join(lines)
 
     def _tool_graph_stats(_: dict) -> str:

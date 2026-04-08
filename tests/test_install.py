@@ -48,6 +48,7 @@ def test_codex_skill_contains_spawn_agent():
     import graphify
     skill = (Path(graphify.__file__).parent / "skill-codex.md").read_text()
     assert "spawn_agent" in skill
+    assert "balanced hybrid" in skill.lower()
 
 
 def test_opencode_skill_contains_mention():
@@ -67,10 +68,10 @@ def test_claw_skill_is_sequential():
 
 
 def test_all_skill_files_exist_in_package():
-    """All four platform skill files must be present in the installed package."""
+    """All packaged platform skill files must be present in the installed package."""
     import graphify
     pkg = Path(graphify.__file__).parent
-    for name in ("skill.md", "skill-codex.md", "skill-opencode.md", "skill-claw.md"):
+    for name in ("skill.md", "skill-codex.md", "skill-opencode.md", "skill-claw.md", "skill-droid.md", "skill-windows.md"):
         assert (pkg / name).exists(), f"Missing: {name}"
 
 

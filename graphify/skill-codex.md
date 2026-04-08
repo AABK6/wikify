@@ -47,7 +47,13 @@ Use it for:
 - A codebase you're new to (understand architecture before touching anything)
 - A reading list (papers + tweets + notes → one navigable graph)
 - A research corpus (citation graph + concept graph in one)
+- A same-story media corpus (reporting + editorials + speeches + screenshots)
+- A discourse map (actors, claims, stances, topics, events, perspectives)
 - Your personal /raw folder (drop everything in, let it grow, query it)
+
+For social science / politics / opinion / press corpora, prefer the **balanced hybrid** profile:
+- `story`, `document`, `actor`, `claim`, `topic`, `event`, `stance`, `perspective`, `quote`, `span`
+- Keep stance primary, sentiment secondary, and preserve provenance with quote/span nodes.
 
 ## What You Must Do When Invoked
 
@@ -214,6 +220,11 @@ Rules:
 Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
   Do not re-extract imports - AST already has those.
 Doc/paper files: extract named concepts, entities, citations. Also extract rationale — sections that explain WHY a decision was made, trade-offs chosen, or design intent. These become nodes with `rationale_for` edges pointing to the concept they explain.
+  For news / opinion / political corpora, switch to a light balanced-hybrid discourse graph.
+  Preferred `node_type` values: `story`, `document`, `actor`, `claim`, `topic`, `event`, `stance`, `perspective`, `quote`, `span`.
+  Extract theses/perspectives, quotes, claim-supporting spans, and actor→claim→topic/event links when the source supports them.
+  Keep sentiment secondary: store it as metadata on span/quote/stance nodes when useful, not as the primary graph object.
+  Use quote/span nodes to preserve provenance so reporter voice, quoted voice, and inference stay separable.
 Image files: use vision to understand what the image IS - do not just OCR.
   UI screenshot: layout patterns, design decisions, key elements, purpose.
   Chart: metric, trend/insight, data source.
@@ -239,6 +250,7 @@ Use sparingly — only when the group relationship adds information beyond the p
 
 If a file has YAML frontmatter (--- ... ---), copy source_url, captured_at, author,
   contributor onto every node from that file.
+  Also preserve `outlet`, `genre`, `story_id`, and `published_at` when present.
 
 confidence_score is REQUIRED on every edge - never omit it, never use 0.5 as a default:
 - EXTRACTED edges: confidence_score = 1.0 always
@@ -249,7 +261,7 @@ confidence_score is REQUIRED on every edge - never omit it, never use 0.5 as a d
 - AMBIGUOUS edges: 0.1-0.3
 
 Output exactly this JSON (no other text):
-{"nodes":[{"id":"filestem_entityname","label":"Human Readable Name","file_type":"code|document|paper|image","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+{"nodes":[{"id":"filestem_entityname","label":"Human Readable Name","file_type":"code|document|paper|image","node_type":null,"source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null,"outlet":null,"genre":null,"story_id":null,"published_at":null,"sentiment":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for|document_in_story|document_mentions_topic|document_describes_event|document_has_perspective|quote_in_document|quote_by_actor|quote_expresses_claim|span_supports_claim|actor_makes_claim|claim_about_topic|claim_about_event|actor_takes_stance|stance_toward_claim|stance_toward_actor|perspective_groups_claim|claim_supports_claim|claim_conflicts_with_claim|event_precedes_event","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
 ```
 
 **Step B3 - Collect, cache, and merge**
@@ -664,7 +676,7 @@ Graph complete. Outputs in PATH_TO_DIR/graphify-out/
 Replace PATH_TO_DIR with the actual absolute path of the directory that was processed.
 
 Then paste these sections from GRAPH_REPORT.md directly into the chat:
-- God Nodes
+- Central Nodes
 - Surprising Connections
 - Suggested Questions
 

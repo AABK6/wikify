@@ -72,6 +72,12 @@ def test_score_nodes_source_file_partial():
     nids = [nid for _, nid in scored]
     assert "n2" in nids
 
+def test_score_nodes_uses_discourse_metadata():
+    G = nx.Graph()
+    G.add_node("n1", label="Budget Vote", source_file="story.md", node_type="story", outlet="Daily Ledger", genre="editorial")
+    scored = _score_nodes(G, ["ledger"])
+    assert scored[0][1] == "n1"
+
 
 # --- _bfs ---
 

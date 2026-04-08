@@ -4,6 +4,7 @@ from graphify.build import build_from_json
 from graphify.cluster import cluster, score_all
 from graphify.analyze import god_nodes, surprising_connections
 from graphify.report import generate
+import networkx as nx
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -61,3 +62,20 @@ def test_report_shows_raw_cohesion_scores():
     assert "Cohesion:" in report
     assert "✓" not in report
     assert "⚠" not in report
+
+
+def test_report_uses_discourse_headings_for_balanced_hybrid_graph():
+    G = nx.Graph()
+    G.add_node("story_1", label="Budget Vote", file_type="document", node_type="story", story_id="budget-1")
+    G.add_node("actor_1", label="Finance Minister", file_type="document", node_type="actor", outlet="Daily Ledger")
+    G.add_edge("story_1", "actor_1", relation="document_in_story", confidence="EXTRACTED", source_file="story.md")
+    communities = {0: ["story_1", "actor_1"]}
+    cohesion = {0: 1.0}
+    labels = {0: "Budget Cluster"}
+    gods = [{"id": "actor_1", "label": "Finance Minister", "edges": 1}]
+    surprises = []
+    detection = {"total_files": 2, "total_words": 2000, "needs_graph": True, "warning": None}
+    tokens = {"input": 10, "output": 10}
+    report = generate(G, communities, cohesion, labels, gods, surprises, detection, tokens, "./project")
+    assert "## Central Nodes (actors, claims, topics, events)" in report
+    assert "## Story & Perspective Clusters" in report

@@ -6,7 +6,7 @@
 [![PyPI](https://img.shields.io/pypi/v/graphifyy)](https://pypi.org/project/graphifyy/)
 [![Sponsor](https://img.shields.io/badge/sponsor-safishamsi-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/safishamsi)
 
-**An AI coding assistant skill.** Type `/graphify` in Claude Code, Codex, OpenCode, OpenClaw, or Factory Droid - it reads your files, builds a knowledge graph, and gives you back structure you didn't know was there. Understand a codebase faster. Find the "why" behind architectural decisions.
+**An AI assistant skill for mixed corpora.** Type `/graphify` in Claude Code, Codex, OpenCode, OpenClaw, or Factory Droid - it reads your files, builds a knowledge graph, and gives you back structure you didn't know was there. Understand a codebase faster, or map a discourse corpus by actors, claims, topics, events, stances, and perspectives.
 
 Fully multimodal. Drop in code, PDFs, markdown, screenshots, diagrams, whiteboard photos, even images in other languages - graphify uses Claude vision to extract concepts and relationships from all of it and connects them into one graph. 19 languages supported via tree-sitter AST (Python, JS, TS, Go, Rust, Java, C, C++, Ruby, C#, Kotlin, Scala, PHP, Swift, Lua, Zig, PowerShell, Elixir, Objective-C).
 
@@ -19,7 +19,7 @@ Fully multimodal. Drop in code, PDFs, markdown, screenshots, diagrams, whiteboar
 ```
 graphify-out/
 ├── graph.html       interactive graph - click nodes, search, filter by community
-├── GRAPH_REPORT.md  god nodes, surprising connections, suggested questions
+├── GRAPH_REPORT.md  central nodes, surprising connections, suggested questions
 ├── graph.json       persistent graph - query weeks later without re-reading
 └── cache/           SHA256 cache - re-runs only process changed files
 ```
@@ -38,11 +38,23 @@ Same syntax as `.gitignore`. Patterns match against file paths relative to the f
 
 ## How it works
 
-graphify runs in two passes. First, a deterministic AST pass extracts structure from code files (classes, functions, imports, call graphs, docstrings, rationale comments) with no LLM needed. Second, Claude subagents run in parallel over docs, papers, and images to extract concepts, relationships, and design rationale. The results are merged into a NetworkX graph, clustered with Leiden community detection, and exported as interactive HTML, queryable JSON, and a plain-language audit report.
+graphify runs in two passes. First, a deterministic AST pass extracts structure from code files (classes, functions, imports, call graphs, docstrings, rationale comments) with no LLM needed. Second, Claude subagents run in parallel over docs, papers, news articles, editorials, and images to extract concepts, relationships, design rationale, and discourse structure. The results are merged into a NetworkX graph, clustered with Leiden community detection, and exported as interactive HTML, queryable JSON, and a plain-language audit report.
 
 **Clustering is graph-topology-based — no embeddings.** Leiden finds communities by edge density. The semantic similarity edges that Claude extracts (`semantically_similar_to`, marked INFERRED) are already in the graph, so they influence community detection directly. The graph structure is the similarity signal — no separate embedding step or vector database needed.
 
 Every relationship is tagged `EXTRACTED` (found directly in source), `INFERRED` (reasonable inference, with a confidence score), or `AMBIGUOUS` (flagged for review). You always know what was found vs guessed.
+
+## Balanced Hybrid discourse profile
+
+For social science, political, opinion, and news corpora, graphify recommends a **balanced hybrid** profile: keep the taxonomy light and model the corpus around a small reusable set of node and edge types.
+
+**Core node types**: `story`, `document`, `actor`, `claim`, `topic`, `event`, `stance`, `perspective`, `quote`, `span`
+
+**Core edge types**: `document_in_story`, `document_mentions_topic`, `document_describes_event`, `document_has_perspective`, `quote_in_document`, `quote_by_actor`, `quote_expresses_claim`, `span_supports_claim`, `actor_makes_claim`, `claim_about_topic`, `claim_about_event`, `actor_takes_stance`, `stance_toward_claim`, `stance_toward_actor`, `perspective_groups_claim`, `claim_supports_claim`, `claim_conflicts_with_claim`, `event_precedes_event`
+
+**Core metadata when available**: `published_at`, `outlet`, `author`, `genre`, `story_id`, `source_url`
+
+This profile is intentionally light: stance is primary, sentiment stays secondary, and quote/span nodes carry provenance so article voice, quoted voice, and analyst inference do not collapse into the same node.
 
 ## Install
 
@@ -87,7 +99,7 @@ After building a graph, run this once in your project:
 | OpenClaw | `graphify claw install` |
 | Factory Droid | `graphify droid install` |
 
-**Claude Code** does two things: writes a `CLAUDE.md` section telling Claude to read `graphify-out/GRAPH_REPORT.md` before answering architecture questions, and installs a **PreToolUse hook** (`settings.json`) that fires before every Glob and Grep call. If a knowledge graph exists, Claude sees: _"graphify: Knowledge graph exists. Read GRAPH_REPORT.md for god nodes and community structure before searching raw files."_ — so Claude navigates via the graph instead of grepping through every file.
+**Claude Code** does two things: writes a `CLAUDE.md` section telling Claude to read `graphify-out/GRAPH_REPORT.md` before answering architecture, corpus, or discourse questions, and installs a **PreToolUse hook** (`settings.json`) that fires before every Glob and Grep call. If a knowledge graph exists, Claude sees: _"graphify: Knowledge graph exists. Read GRAPH_REPORT.md for central nodes and community structure before searching raw files."_ — so Claude navigates via the graph instead of grepping through every file.
 
 **Codex, OpenCode, OpenClaw, Factory Droid** write the same rules to `AGENTS.md` in your project root. These platforms don't support PreToolUse hooks, so AGENTS.md is the always-on mechanism.
 
@@ -95,7 +107,7 @@ Uninstall with the matching uninstall command (e.g. `graphify claude uninstall`)
 
 **Always-on vs explicit trigger — what's the difference?**
 
-The always-on hook surfaces `GRAPH_REPORT.md` — a one-page summary of god nodes, communities, and surprising connections. Your assistant reads this before searching files, so it navigates by structure instead of keyword matching. That covers most everyday questions.
+The always-on hook surfaces `GRAPH_REPORT.md` — a one-page summary of central nodes, communities, and surprising connections. Your assistant reads this before searching files, so it navigates by structure instead of keyword matching. That covers most everyday questions.
 
 `/graphify query`, `/graphify path`, and `/graphify explain` go deeper: they traverse the raw `graph.json` hop by hop, trace exact paths between nodes, and surface edge-level detail (relation type, confidence score, source location). Use them when you want a specific question answered from the graph rather than a general orientation.
 
@@ -182,13 +194,13 @@ Works with any mix of file types:
 
 ## What you get
 
-**God nodes** - highest-degree concepts (what everything connects through)
+**Central nodes** - highest-degree concepts, actors, claims, topics, or events (what everything connects through)
 
-**Surprising connections** - ranked by composite score. Code-paper edges rank higher than code-code. Each result includes a plain-English why.
+**Cross-corpus bridges** - ranked by composite score. Code-paper edges rank higher than code-code, and quote/claim/topic/event bridges surface for discourse corpora. Each result includes a plain-English why.
 
-**Suggested questions** - 4-5 questions the graph is uniquely positioned to answer
+**Suggested questions** - 4-5 questions the graph is uniquely positioned to answer across architecture, stories, or perspectives
 
-**The "why"** - docstrings, inline comments (`# NOTE:`, `# IMPORTANT:`, `# HACK:`, `# WHY:`), and design rationale from docs are extracted as `rationale_for` nodes. Not just what the code does - why it was written that way.
+**The "why"** - docstrings, inline comments (`# NOTE:`, `# IMPORTANT:`, `# HACK:`, `# WHY:`), and rationale from docs, editorials, speeches, and notes are extracted as `rationale_for` nodes. Not just what the code or corpus says - why it was framed that way.
 
 **Confidence scores** - every INFERRED edge has a `confidence_score` (0.0-1.0). You know not just what was guessed but how confident the model was. EXTRACTED edges are always 1.0.
 
@@ -202,7 +214,9 @@ Works with any mix of file types:
 
 **Git hooks** (`graphify hook install`) - installs post-commit and post-checkout hooks. Graph rebuilds automatically after every commit and every branch switch. If a rebuild fails, the hook exits with a non-zero code so git surfaces the error instead of silently continuing. No background process needed.
 
-**Wiki** (`--wiki`) - Wikipedia-style markdown articles per community and god node, with an `index.md` entry point. Point any agent at `index.md` and it can navigate the knowledge base by reading files instead of parsing JSON.
+**Wiki** (`--wiki`) - Wikipedia-style markdown articles per community and central node, with an `index.md` entry point. Point any agent at `index.md` and it can navigate the knowledge base by reading files instead of parsing JSON.
+
+For balanced-hybrid discourse corpora, those wiki pages become story and perspective cluster articles: central actors, claims, topics, and weak links are summarized in files an agent can crawl directly.
 
 ## Worked examples
 
